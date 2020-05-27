@@ -89,6 +89,10 @@ sub _get {
     my $content       = $http_response->content;
     $self->_load_user_metadata($http_response);
 
+    if ( not $self->_encryption_enabled($http_response) ) {
+        return $http_response;
+    }
+
     my $md5_hex = md5_hex($content);
     my $etag = $self->etag || $self->_etag($http_response);
     confess 'Corrupted download'
@@ -350,6 +354,17 @@ sub _etag {
         $etag =~ s/"$//;
     }
     return $etag;
+}
+
+sub _encryption_enabled {
+    my ( $self, $http_response ) = @_;
+    if ( $http_response->header('x-amz-server-side-encryption') ) {
+        return 1;
+    }
+    if ( $http_response->header('x-goog-encryption-kms-key-name') ) {
+        return 1;
+    }
+    return 0;
 }
 
 sub _is_multipart_etag {
